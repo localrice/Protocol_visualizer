@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Protocol Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">Protocol Dashboard <span>CN / V1</span></a>
+    <nav aria-label="Project links">
+      <a href="{{ github_url }}" target="_blank" rel="noreferrer">GitHub</a>
+      <a href="https://kinjalboro.me" target="_blank" rel="noreferrer">kinjalboro.me</a>
+    </nav>
+  </header>
+
+  <main class="dashboard">
+    <section class="panel activity-panel" aria-labelledby="activity-heading">
+      <div class="panel-heading">
+        <h1 id="activity-heading">Activity</h1>
+      </div>
+
+      <div class="activity-tabs" role="tablist" aria-label="Choose an activity">
+        <button class="tab is-active" data-activity="browsing" role="tab" aria-selected="true">Browsing</button>
+        <button class="tab" data-activity="mail" role="tab" aria-selected="false">Mail</button>
+        <button class="tab" data-activity="streaming" role="tab" aria-selected="false">Streaming</button>
+      </div>
+
+      <div class="activity-view" data-view="browsing">
+        <form id="browse-form">
+          <label for="url">URL</label>
+          <div class="input-row"><input id="url" name="url" type="url" value="https://example.com" required><button class="primary" type="submit">Visit</button></div>
+          <p class="request-note">A live network request runs on the server. The trace shows request details, not raw packets.</p>
+        </form>
+      </div>
+
+      <div class="activity-view is-hidden" data-view="mail">
+        <form id="mail-form">
+          <label for="to">To</label><input id="to" name="to" type="email" placeholder="recipient@example.com" required>
+          <label for="subject">Subject</label><input id="subject" name="subject" type="text" placeholder="A protocol message" required>
+          <label for="body">Body</label><textarea id="body" name="body" rows="5" placeholder="Write a message" required></textarea>
+          <button class="primary" type="submit">Send</button>
+        </form>
+      </div>
+
+      <div class="activity-view is-hidden" data-view="streaming">
+        <div class="stream-controls"><button class="primary" id="stream-play" type="button">Play</button><button type="button" id="stream-pause">Pause</button></div>
+        <label for="quality">Quality</label><select id="quality"><option value="auto">Auto</option><option value="360p">360p</option><option value="720p">720p</option><option value="1080p">1080p</option></select>
+      </div>
+
+      <div class="status-block" aria-live="polite"><span class="status-label">Status</span><span class="status-dot"></span><span id="status">Ready</span></div>
+      <div id="error" class="error" role="alert" hidden></div>
+    </section>
+
+    <section class="panel protocol-panel" aria-labelledby="protocol-heading">
+      <div class="panel-heading protocol-title"><h2 id="protocol-heading">Protocol exchange</h2></div>
+      <div id="exchange-view" class="exchange-view" aria-live="polite"><p class="empty-state">Run an activity to populate the exchange.</p></div>
+      <p class="trace-note">Live request metadata; no packet capture.</p>
+    </section>
+  </main>
+</body>
+</html>
