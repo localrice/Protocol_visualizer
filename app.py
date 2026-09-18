@@ -15,6 +15,8 @@ import dns.exception
 import dns.resolver
 from flask import Flask, jsonify, render_template, request
 
+from mail import MailError, send_mail
+
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
 
@@ -198,31 +200,6 @@ def browse(url: str) -> dict:
     return {"success": True, "activity": "browsing", "events": events}
 
 
-def simulated_mail(to: str, subject: str, body: str) -> dict:
-    if not to or "@" not in to or len(to) > 254:
-        raise ValueError("Enter a recipient email address")
-    if not subject.strip() or len(subject) > 200:
-        raise ValueError("Enter a subject up to 200 characters")
-    if not body.strip() or len(body) > 4000:
-        raise ValueError("Enter a message body up to 4,000 characters")
-    events = [
-        event(1, "SMTP", "server-to-client", "response", "220 mail.example.com SMTP Service Ready", {"Traffic": "Simulated", "Role": "Mail server"}),
-        event(2, "SMTP", "client-to-server", "command", "EHLO client.example", {"Command": "EHLO", "Traffic": "Simulated"}),
-        event(3, "SMTP", "server-to-client", "response", "250-mail.example.com\n250-STARTTLS\n250 AUTH ...", {"Capabilities": "STARTTLS, AUTH", "Traffic": "Simulated"}),
-        event(4, "SMTP", "client-to-server", "command", "MAIL FROM:<sender@example.com>", {"Command": "MAIL FROM", "Traffic": "Simulated"}),
-        event(5, "SMTP", "server-to-client", "response", "250 OK", {"Traffic": "Simulated"}),
-        event(6, "SMTP", "client-to-server", "command", f"RCPT TO:<{to}>", {"Command": "RCPT TO", "Traffic": "Simulated"}),
-        event(7, "SMTP", "server-to-client", "response", "250 OK", {"Traffic": "Simulated"}),
-        event(8, "SMTP", "client-to-server", "command", "DATA", {"Command": "DATA", "Traffic": "Simulated"}),
-        event(9, "SMTP", "server-to-client", "response", "354 End data with <CR><LF>.<CR><LF>", {"Traffic": "Simulated"}),
-        event(10, "SMTP", "client-to-server", "data", f"Subject: {subject}\n\n{body}\n.", {"Recipient": to, "Traffic": "Simulated"}),
-        event(11, "SMTP", "server-to-client", "response", "250 OK", {"Traffic": "Simulated"}),
-        event(12, "SMTP", "client-to-server", "command", "QUIT", {"Command": "QUIT", "Traffic": "Simulated"}),
-        event(13, "SMTP", "server-to-client", "response", "221 Bye", {"Traffic": "Simulated"}),
-    ]
-    return {"success": True, "activity": "mail", "events": events, "simulated": True}
-
-
 def simulated_stream(quality: str) -> dict:
     quality = quality if quality in {"auto", "360p", "720p", "1080p"} else "auto"
     representation = {"auto": "adaptive", "360p": "360p", "720p": "720p", "1080p": "1080p"}[quality]
@@ -274,8 +251,8 @@ def mail_api():
         body = payload.get("body", "")
         if not all(isinstance(value, str) for value in (to, subject, body)):
             raise ValueError("Mail fields must be strings")
-        return jsonify(simulated_mail(to.strip(), subject, body))
-    except ValueError as exc:
+        return jsonify(send_mail(to.strip(), subject, body))
+    except MailError as exc:
         return error_response(str(exc))
 
 
