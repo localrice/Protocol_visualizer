@@ -1,4 +1,5 @@
 const state = { events: [], current: -1, timer: null };
+const streamState = { poll: null, pollStop: null, lastEvent: 0, hls: null };
 const $ = (selector) => document.querySelector(selector);
 
 function applyTheme(theme) {
@@ -37,6 +38,7 @@ function visibleFields(item) {
     SEGMENT: ["Representation", "Resource"],
     TCP: ["Destination"],
     TLS: ["Visibility"],
+    HLS: item.type === "response" ? ["Content-Type"] : [],
   };
   const keys = allowed[item.protocol] || [];
   return Object.entries(item.fields || {}).filter(([key]) => keys.includes(key)).map(([key, value]) => {
@@ -76,9 +78,30 @@ function escapeHtml(value) { const div = document.createElement("div"); div.text
 function scheduleNext() { clearTimeout(state.timer); if (state.current >= state.events.length - 1) return; state.timer = setTimeout(() => showEvent(state.current + 1), state.events[state.current]?.delay || 800); }
 function loadEvents(data) { clearTimeout(state.timer); state.events = data.events || []; state.current = -1; showEvent(0); }
 async function postJson(url, payload) { const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); const data = await response.json(); if (!response.ok || !data.success) throw new Error(data.error || "Request failed"); return data; }
+function appendStreamEvents(events) { if (!events.length) return; const previousLength = state.events.length; state.events.push(...events); streamState.lastEvent = events[events.length - 1].sequence; if (state.current < 0) showEvent(0); else if (state.current === previousLength - 1) showEvent(previousLength); else renderExchange(); }
+async function pollStreamEvents() { try { const response = await fetch(`/api/stream/events?since=${streamState.lastEvent}`); const data = await response.json(); appendStreamEvents(data.events || []); } catch (_error) { /* Playback can continue if event polling briefly fails. */ } }
+function stopStreamPolling() { clearInterval(streamState.poll); clearTimeout(streamState.pollStop); streamState.poll = null; streamState.pollStop = null; }
+function beginStreamPolling() { stopStreamPolling(); streamState.poll = setInterval(pollStreamEvents, 400); streamState.pollStop = setTimeout(stopStreamPolling, 20000); pollStreamEvents(); }
+function playHls(url) {
+  const video = $("#stream-player"); video.hidden = false;
+  if (streamState.hls) streamState.hls.destroy();
+  if (window.Hls && window.Hls.isSupported()) {
+    streamState.hls = new window.Hls();
+    streamState.hls.loadSource(url);
+    streamState.hls.attachMedia(video);
+    streamState.hls.on(window.Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
+  } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+    video.src = url;
+    video.play().catch(() => {});
+  } else {
+    throw new Error("This browser does not support HLS playback");
+  }
+}
 
 $(".activity-tabs").addEventListener("click", (event) => { const tab = event.target.closest(".tab"); if (!tab) return; document.querySelectorAll(".tab").forEach((button) => { const active = button === tab; button.classList.toggle("is-active", active); button.setAttribute("aria-selected", active); }); document.querySelectorAll(".activity-view").forEach((view) => view.classList.toggle("is-hidden", view.dataset.view !== tab.dataset.activity)); showError(); setStatus("Ready for an activity."); });
 
 $("#browse-form").addEventListener("submit", async (event) => { event.preventDefault(); showError(); setStatus("Resolving hostname and requesting URL...", true); try { const data = await postJson("/api/browse", { url: $("#url").value }); loadEvents(data); setStatus("Browse exchange complete."); } catch (error) { setStatus("Browse failed."); showError(error.message); } });
 $("#mail-form").addEventListener("submit", async (event) => { event.preventDefault(); showError(); setStatus("Sending email through SMTP...", true); try { const data = await postJson("/api/mail", { to: $("#to").value, subject: $("#subject").value, body: $("#body").value }); loadEvents(data); setStatus("Email sent."); } catch (error) { setStatus("Email could not be sent."); showError(error.message); } });
-$("#stream-play").addEventListener("click", async () => { showError(); setStatus("Preparing adaptive streaming trace...", true); try { const data = await postJson("/api/stream", { quality: $("#quality").value }); loadEvents(data); setStatus("Streaming simulation ready."); } catch (error) { setStatus("Streaming simulation failed."); showError(error.message); } });
+$("#stream-play").addEventListener("click", async () => { showError(); setStatus("Preparing HLS stream...", true); try { const data = await postJson("/api/stream", { quality: $("#quality").value }); clearTimeout(state.timer); state.events = []; state.current = -1; streamState.lastEvent = 0; playHls(data.stream_url); beginStreamPolling(); setStatus("Streaming from the Flask server."); } catch (error) { setStatus("Streaming failed."); showError(error.message); } });
+$("#stream-pause").addEventListener("click", () => { $("#stream-player").pause(); stopStreamPolling(); setStatus("Streaming paused."); });
+$("#stream-player").addEventListener("ended", () => { stopStreamPolling(); setStatus("Streaming complete."); });

@@ -6,26 +6,31 @@ A small Flask dashboard for exploring application-layer exchanges through Browsi
 
 - [x] Browsing with real server-side DNS and HTTP/HTTPS requests
 - [x] Mail workflow with configured SMTP delivery
-- [ ] Streaming workflow
+- [x] Streaming workflow with local HLS playback
 
 ## Features
 
 - Explicit recursive DNS queries with dnspython (configured by `DNS_RESOLVER`, default `1.1.1.1`) and bounded HTTP/HTTPS requests for Browsing.
 - Metadata-based HTTP visualization. This is not packet capture, and HTTPS payloads are not decrypted.
 - Real SMTP delivery with an application-level SMTP conversation trace.
+- Local MP4 to HLS streaming served by Flask with request-based protocol events.
 - Shared JSON event model with automatic protocol playback.
 - Local validation, request size limits, timeouts, and basic private-destination blocking.
 
 ## Architecture
 
-`app.py` owns Flask routes, input validation, explicit DNS/HTTP work, and protocol event generation. `mail.py` owns the configured SMTP connection and application-level SMTP events. `templates/index.html` contains the two-panel shell. `static/js/app.js` renders the reusable event sequence and automatically advances the exchange. `static/css/style.css` contains the responsive, framework-free styling.
+`app.py` owns Flask routes and application setup. `browsing.py` owns DNS/HTTP work, `mail.py` owns the configured SMTP connection, `streaming.py` converts the local MP4 to HLS and tracks served resources, and `protocol.py` provides the shared event helper. `templates/index.html` contains the two-panel shell. `static/js/app.js` renders the reusable event sequence and automatically advances the exchange. `static/css/style.css` contains the responsive, framework-free styling.
 
 ## Project structure
 
 ```text
 .
 ├── app.py
+├── browsing.py
 ├── mail.py
+├── protocol.py
+├── streaming.py
+├── media/video.mp4
 ├── requirements.txt
 ├── .env.example
 ├── templates/index.html
@@ -49,13 +54,22 @@ Open <http://127.0.0.1:5000>.
 
 ## Ubuntu deployment prerequisites
 
-Install Python 3, the Python virtual-environment package, and a compiler toolchain only if other project dependencies later require it. Create a dedicated unprivileged user, use a virtual environment, and place the app behind a production WSGI server and TLS-terminating reverse proxy when it is exposed publicly. Those deployment pieces are intentionally outside V1.
+Install Python 3, the Python virtual-environment package, and FFmpeg:
+
+```bash
+sudo apt update
+sudo apt install python3 python3-venv ffmpeg
+```
+
+Create a dedicated unprivileged user, use a virtual environment, and place the app behind a production WSGI server and TLS-terminating reverse proxy when it is exposed publicly. Those deployment pieces are intentionally outside V1.
 
 ## Real versus simulated traffic
 
 Browsing sends fresh A and AAAA queries to the configured recursive resolver using dnspython, then performs a real HTTP/HTTPS request from Flask. The standard HTTP client may perform its own transport lookup; the DNS exchange shown in the dashboard is the explicit dnspython query and identifies its resolver. No cache-clearing command is attempted or claimed. The dashboard only reports request and response metadata available to Python; it does not inspect raw packets. Redirect responses are displayed as responses rather than followed automatically. HTTPS includes TCP and TLS stages, then labels HTTP content as client metadata rather than decrypted wire data.
 
-Streaming remains reserved for later implementation.
+Streaming converts the bundled `media/video.mp4` to HLS on the first Play request. Flask serves `playlist.m3u8` and `.ts` segments directly. The browser playback requests are recorded from the Flask stream routes and displayed in the protocol trace; no random segment requests are generated.
+
+The first streaming version uses one 640x360 rendition, so Quality is currently Auto. Multiple HLS renditions can be added later without changing the playback route.
 
 ## SMTP configuration
 

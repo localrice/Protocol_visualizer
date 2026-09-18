@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_file
 
 from browsing import browse
 from mail import MailError, send_mail
-from streaming import simulated_stream
+from streaming import StreamingError, events_since, serve_file, start_stream
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
@@ -61,7 +61,31 @@ def mail_api():
 @app.post("/api/stream")
 def stream_api():
     payload = requested_json() or {}
-    return jsonify(simulated_stream(payload.get("quality", "auto")))
+    try:
+        return jsonify(start_stream(payload.get("quality", "auto")))
+    except StreamingError as exc:
+        return error_response(str(exc), 503)
+
+
+@app.get("/stream/<path:filename>")
+def stream_file(filename: str):
+    try:
+        result = serve_file(filename)
+    except StreamingError as exc:
+        return error_response(str(exc), 503)
+    if result is None:
+        return error_response("Stream resource not found", 404)
+    path, content_type = result
+    return send_file(path, mimetype=content_type, conditional=True)
+
+
+@app.get("/api/stream/events")
+def stream_events_api():
+    try:
+        sequence = max(0, int(request.args.get("since", "0")))
+    except ValueError:
+        sequence = 0
+    return jsonify(events_since(sequence))
 
 
 @app.errorhandler(413)

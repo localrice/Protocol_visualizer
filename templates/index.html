@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Protocol Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script defer src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
   <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
 </head>
 <body>
@@ -21,8 +22,15 @@
 
   <main class="dashboard">
     <section class="panel activity-panel" aria-labelledby="activity-heading">
+        <div class="live-info">
+  <span class="live-info-dot"></span>
+  <div>
+    <strong><h1>Live network activity</h1></strong>
+        <p>This dashboard performs real network operations, including HTTPS requests, SMTP email, and streaming. Nothing is simulated.</p>
+  </div>
+</div>
       <div class="panel-heading">
-        <h1 id="activity-heading">Activity</h1>
+        <!-- <h1 id="activity-heading">Activity</h1> -->
       </div>
 
       <div class="activity-tabs" role="tablist" aria-label="Choose an activity">
@@ -35,7 +43,7 @@
         <form id="browse-form">
           <label for="url">URL</label>
           <div class="input-row"><input id="url" name="url" type="url" value="https://example.com" required><button class="primary" type="submit">Visit</button></div>
-          <p class="request-note">A live network request runs on the server. The trace shows request details, not raw packets.</p>
+          <!-- <p class="request-note">A live network request runs on the server. The trace shows request details, not raw packets.</p> -->
         </form>
       </div>
 
@@ -48,9 +56,10 @@
         </form>
       </div>
 
-      <div class="activity-view is-hidden" data-view="streaming">
+      <div class="activity-view is-hidden" data-view="streaming" style="padding-top: 20px;">
         <div class="stream-controls"><button class="primary" id="stream-play" type="button">Play</button><button type="button" id="stream-pause">Pause</button></div>
-        <label for="quality">Quality</label><select id="quality"><option value="auto">Auto</option><option value="360p">360p</option><option value="720p">720p</option><option value="1080p">1080p</option></select>
+        <label for="quality">Quality</label><select id="quality"><option value="auto">Auto</option></select>
+        <video id="stream-player" controls playsinline hidden></video>
       </div>
 
       <div class="status-block" aria-live="polite"><span class="status-label">Status</span><span class="status-dot"></span><span id="status">Ready</span></div>
@@ -60,7 +69,7 @@
     <section class="panel protocol-panel" aria-labelledby="protocol-heading">
       <div class="panel-heading protocol-title"><h2 id="protocol-heading">Protocol exchange</h2></div>
       <div id="exchange-view" class="exchange-view" aria-live="polite"><p class="empty-state">Run an activity to populate the exchange.</p></div>
-      <p class="trace-note">Live request metadata; no packet capture.</p>
+      <!-- <p class="trace-note">Live request metadata; no packet capture.</p> -->
     </section>
   </main>
 </body>

@@ -1,30 +1,99 @@
-"""Streaming activity functionality.
-
-The workflow remains simulated until a real public manifest is configured.
-"""
+"""Local MP4 to HLS streaming support."""
 
 from __future__ import annotations
 
+import subprocess
+import threading
+from collections import deque
+from pathlib import Path
+
 from protocol import event
 
+BASE_DIR = Path(__file__).resolve().parent
+SOURCE_VIDEO = BASE_DIR / "media" / "video.mp4"
+HLS_DIR = BASE_DIR / "instance" / "stream"
+HLS_PLAYLIST = HLS_DIR / "playlist.m3u8"
+_generation_lock = threading.Lock()
+_stream_events: deque[dict] = deque(maxlen=100)
+_next_sequence = 1
 
-def simulated_stream(quality: str) -> dict:
-    quality = quality if quality in {"auto", "360p", "720p", "1080p"} else "auto"
-    representation = {"auto": "adaptive", "360p": "360p", "720p": "720p", "1080p": "1080p"}[quality]
-    paths = ["/video/manifest.mpd", "/video/segment_001.m4s", "/video/segment_002.m4s", "/video/segment_003.m4s"]
-    events = [
-        event(1, "DNS", "client-to-server", "query", "DNS Query: A media.example.com", {"Name": "media.example.com", "Type": "A", "Resolver": "Recursive Resolver (simulated)", "Traffic": "Simulated"}),
-        event(2, "DNS", "server-to-client", "response", "DNS Response: NOERROR", {"Status": "resolved", "Answer": "203.0.113.20", "Traffic": "Simulated"}),
+
+class StreamingError(Exception):
+    """A safe error raised when local HLS preparation fails."""
+
+
+def _record(event_type: str, message: str, fields: dict[str, str], direction: str) -> None:
+    global _next_sequence
+    _stream_events.append(event(_next_sequence, "HLS", direction, event_type, message, fields))
+    _next_sequence += 1
+
+
+def _video_encoder() -> str:
+    try:
+        encoders = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-encoders"],
+            check=True, capture_output=True, text=True, timeout=10,
+        ).stdout
+    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        raise StreamingError("FFmpeg is not installed on the server")
+    for encoder in ("libx264", "libopenh264"):
+        if encoder in encoders:
+            return encoder
+    raise StreamingError("FFmpeg needs an H.264 encoder for browser playback")
+
+
+def ensure_hls() -> None:
+    if HLS_PLAYLIST.exists() and any(HLS_DIR.glob("segment*.ts")):
+        return
+    if not SOURCE_VIDEO.exists():
+        raise StreamingError("The local source video is missing")
+    HLS_DIR.mkdir(parents=True, exist_ok=True)
+    encoder = _video_encoder()
+    command = [
+        "ffmpeg", "-y", "-i", str(SOURCE_VIDEO),
+        "-c:v", encoder, "-g", "48", "-sc_threshold", "0",
+        "-c:a", "aac", "-b:a", "96k", "-f", "hls", "-hls_time", "2",
+        "-hls_list_size", "0", "-hls_segment_filename", str(HLS_DIR / "segment%03d.ts"),
+        str(HLS_PLAYLIST),
     ]
-    sequence = 3
-    for path in paths:
-        kind = "Manifest / Playlist" if path.endswith(".mpd") else "Media Segment"
-        events.append(event(sequence, "MANIFEST" if path.endswith(".mpd") else "SEGMENT", "client-to-server", "request", f"GET {path} HTTP/1.1", {
-            "Host": "media.example.com", "Representation": representation, "Resource": kind, "Traffic": "Simulated"
-        }))
-        events.append(event(sequence + 1, "HTTP", "server-to-client", "response", "HTTP/1.1 200 OK", {
-            "Content-Type": "application/dash+xml" if path.endswith(".mpd") else "video/iso.segment",
-            "Resource": kind, "Traffic": "Simulated"
-        }))
-        sequence += 2
-    return {"success": True, "activity": "streaming", "events": events, "simulated": True}
+    with _generation_lock:
+        if HLS_PLAYLIST.exists() and any(HLS_DIR.glob("segment*.ts")):
+            return
+        try:
+            subprocess.run(command, check=True, capture_output=True, text=True, timeout=60)
+        except FileNotFoundError as exc:
+            raise StreamingError("FFmpeg is not installed on the server") from exc
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            raise StreamingError("FFmpeg could not create the HLS stream") from exc
+
+
+def start_stream(quality: str = "auto") -> dict:
+    global _next_sequence
+    ensure_hls()
+    _stream_events.clear()
+    _next_sequence = 1
+    quality = quality if quality in {"auto", "360p", "720p"} else "auto"
+    return {
+        "success": True,
+        "activity": "streaming",
+        "stream_url": "/stream/playlist.m3u8",
+        "quality": quality,
+        "events": [],
+        "real": True,
+    }
+
+
+def serve_file(filename: str):
+    ensure_hls()
+    path = (HLS_DIR / filename).resolve()
+    if path.parent != HLS_DIR.resolve() or path.suffix not in {".m3u8", ".ts"} or not path.is_file():
+        return None
+    resource = f"/stream/{filename}"
+    content_type = "application/vnd.apple.mpegurl" if path.suffix == ".m3u8" else "video/mp2t"
+    _record("request", f"GET {resource}", {"Resource": resource, "Content-Type": content_type}, "client-to-server")
+    _record("response", "HTTP/1.1 200 OK", {"Resource": resource, "Content-Type": content_type}, "server-to-client")
+    return path, content_type
+
+
+def events_since(sequence: int) -> dict:
+    return {"events": [item for item in _stream_events if item["sequence"] > sequence]}
