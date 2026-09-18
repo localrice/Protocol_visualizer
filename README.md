@@ -9,6 +9,7 @@ A small web application that performs real network activities—such as web requ
 - Python packages (from `requirements.txt`):
   - `Flask`
   - `dnspython`
+  - `gunicorn`
 
 On Ubuntu/Debian systems:
 ```bash
@@ -58,7 +59,13 @@ sudo apt install -y python3 python3-venv python3-pip ffmpeg git
 
 ## Running
 
-Start the Flask development server:
+Start with Gunicorn (production):
+
+```bash
+gunicorn app:app
+```
+
+Or start the Flask development server:
 
 ```bash
 python app.py
@@ -69,3 +76,42 @@ Open your browser and navigate to:
 ```text
 http://127.0.0.1:5000
 ```
+
+## Production Deployment (systemd on Ubuntu)
+
+The project includes a ready-to-use service file at `deploy/protocol-dashboard.service`.
+
+1. **Create the virtual environment**:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+2. **Install requirements**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Install and enable the systemd service**:
+   Copy the service file to systemd:
+   ```bash
+   sudo cp deploy/protocol-dashboard.service /etc/systemd/system/protocol-dashboard.service
+   ```
+   Open `/etc/systemd/system/protocol-dashboard.service` and replace the `<user>` and `/path/to/protocol-dashboard` placeholders with your Linux user and project directory path.
+
+   Then reload systemd and enable the service on boot:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now protocol-dashboard
+   ```
+
+4. **Check service logs**:
+   ```bash
+   sudo journalctl -u protocol-dashboard -f
+   ```
+
+5. **Restart or stop the service**:
+   ```bash
+   sudo systemctl restart protocol-dashboard
+   sudo systemctl stop protocol-dashboard
+   ```

@@ -1,0 +1,32 @@
+[Unit]
+Description=Protocol Dashboard Gunicorn Application
+After=network.target
+
+[Service]
+# Replace with your Linux username or dedicated service user (e.g., ubuntu or www-data)
+User=<user>
+Group=<user>
+
+# Replace with the absolute path to your project directory (e.g., /home/ubuntu/Protocol_visualizer)
+WorkingDirectory=/path/to/protocol-dashboard
+
+# Ensure the virtualenv binaries and system tools (including ffmpeg) are available on PATH
+Environment="PATH=/path/to/protocol-dashboard/venv/bin:/usr/local/bin:/usr/bin:/bin"
+
+# Load optional SMTP environment variables from .env if present
+EnvironmentFile=-/path/to/protocol-dashboard/.env
+
+# Start Gunicorn using the virtual environment, bound to localhost port 5000
+ExecStart=/path/to/protocol-dashboard/venv/bin/gunicorn --bind 127.0.0.1:5000 --workers 1 --threads 4 app:app
+
+# Automatically restart if the process crashes
+Restart=always
+RestartSec=5s
+
+# Process management and isolation
+KillMode=mixed
+TimeoutStopSec=10
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
