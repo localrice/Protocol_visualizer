@@ -1,6 +1,21 @@
 const state = { events: [], current: -1, timer: null };
 const $ = (selector) => document.querySelector(selector);
 
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  const dark = theme === "dark";
+  const label = dark ? "Switch to light mode" : "Switch to dark mode";
+  $("#theme-toggle").setAttribute("aria-label", label);
+  $("#theme-toggle").setAttribute("title", label);
+}
+
+applyTheme(localStorage.getItem("protocol-dashboard-theme") || "dark");
+$("#theme-toggle").addEventListener("click", () => {
+  const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  localStorage.setItem("protocol-dashboard-theme", nextTheme);
+  applyTheme(nextTheme);
+});
+
 function setStatus(message, active = false) {
   $("#status").textContent = message;
   $(".status-dot").classList.toggle("is-active", active);
@@ -30,12 +45,30 @@ function visibleFields(item) {
     return [key, value];
   });
 }
+function smtpInteractionGroups(items) {
+  const groups = [];
+  let current = null;
+  items.forEach(({ item, index }) => {
+    if (item.direction === "server-to-client" && !groups.length && !current) {
+      groups.push({ key: "SMTP / SERVER GREETING", items: [{ item, index }] });
+      return;
+    }
+    if (item.direction === "client-to-server" && !(item.type === "data" && current?.key === "SMTP / DATA")) {
+      const command = item.type === "data" ? "MESSAGE DATA" : item.message.split(" ", 1)[0].toUpperCase();
+      const title = command === "EHLO" && groups.some((group) => group.key === "SMTP / EHLO") ? "EHLO (AFTER TLS)" : command;
+      current = { key: `SMTP / ${title}`, items: [] };
+      groups.push(current);
+    }
+    if (current) current.items.push({ item, index });
+  });
+  return groups;
+}
 function renderExchange() {
   const view = $("#exchange-view"); view.replaceChildren();
   if (!state.events.length) { view.innerHTML = '<p class="empty-state">Run an activity to populate the exchange.</p>'; return; }
   const groups = [];
   state.events.forEach((item, index) => { const key = item.protocol; let group = groups[groups.length - 1]; if (!group || group.key !== key) { group = { key, items: [] }; groups.push(group); } group.items.push({ item, index }); });
-  groups.forEach((group) => { const section = document.createElement("section"); section.className = "exchange-group"; const resolver = group.key === "DNS" ? group.items[0].item.fields?.Resolver : ""; const context = resolver ? `<p class="exchange-context">Client → ${escapeHtml(resolver)}</p>` : ""; section.innerHTML = `<h3 class="exchange-group-title">${escapeHtml(group.key)}</h3>${context}`; const list = document.createElement("div"); list.className = "exchange-events"; group.items.forEach(({ item, index }) => { const message = document.createElement("article"); message.className = `exchange-message ${index === state.current ? "is-current" : index < state.current ? "is-complete" : ""}`; const fields = visibleFields(item).map(([key, value]) => `<span class="field"><b>${escapeHtml(key)}:</b> ${escapeHtml(String(value))}</span>`).join(""); message.innerHTML = `<div class="message-side"><span class="message-kind">${escapeHtml(messageLabel(item))}</span><strong>${escapeHtml(displayMessage(item))}</strong>${fields ? `<div class="message-fields">${fields}</div>` : ""}</div>`; list.append(message); }); section.append(list); view.append(section); });
+  groups.flatMap((group) => group.key === "SMTP" ? smtpInteractionGroups(group.items) : [group]).forEach((group) => { const section = document.createElement("section"); section.className = `exchange-group${group.key.startsWith("SMTP /") ? " smtp-interaction" : ""}`; const resolver = group.key === "DNS" ? group.items[0].item.fields?.Resolver : ""; const context = resolver ? `<p class="exchange-context">Client → ${escapeHtml(resolver)}</p>` : ""; section.innerHTML = `<h3 class="exchange-group-title">${escapeHtml(group.key)}</h3>${context}`; const list = document.createElement("div"); list.className = "exchange-events"; group.items.forEach(({ item, index }) => { const message = document.createElement("article"); message.className = `exchange-message ${index === state.current ? "is-current" : index < state.current ? "is-complete" : ""}`; const fields = visibleFields(item).map(([key, value]) => `<span class="field"><b>${escapeHtml(key)}:</b> ${escapeHtml(String(value))}</span>`).join(""); message.innerHTML = `<div class="message-side"><span class="message-kind">${escapeHtml(messageLabel(item))}</span><strong>${escapeHtml(displayMessage(item))}</strong>${fields ? `<div class="message-fields">${fields}</div>` : ""}</div>`; list.append(message); }); section.append(list); view.append(section); });
   const current = view.querySelector(".is-current"); if (current) current.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 function showEvent(index) { if (!state.events.length) return; state.current = Math.max(0, Math.min(index, state.events.length - 1)); renderExchange(); scheduleNext(); }
@@ -47,5 +80,5 @@ async function postJson(url, payload) { const response = await fetch(url, { meth
 $(".activity-tabs").addEventListener("click", (event) => { const tab = event.target.closest(".tab"); if (!tab) return; document.querySelectorAll(".tab").forEach((button) => { const active = button === tab; button.classList.toggle("is-active", active); button.setAttribute("aria-selected", active); }); document.querySelectorAll(".activity-view").forEach((view) => view.classList.toggle("is-hidden", view.dataset.view !== tab.dataset.activity)); showError(); setStatus("Ready for an activity."); });
 
 $("#browse-form").addEventListener("submit", async (event) => { event.preventDefault(); showError(); setStatus("Resolving hostname and requesting URL...", true); try { const data = await postJson("/api/browse", { url: $("#url").value }); loadEvents(data); setStatus("Browse exchange complete."); } catch (error) { setStatus("Browse failed."); showError(error.message); } });
-$("#mail-form").addEventListener("submit", async (event) => { event.preventDefault(); showError(); setStatus("Building simulated SMTP conversation...", true); try { const data = await postJson("/api/mail", { to: $("#to").value, subject: $("#subject").value, body: $("#body").value }); loadEvents(data); setStatus("SMTP simulation ready."); } catch (error) { setStatus("Mail simulation failed."); showError(error.message); } });
+$("#mail-form").addEventListener("submit", async (event) => { event.preventDefault(); showError(); setStatus("Sending email through SMTP...", true); try { const data = await postJson("/api/mail", { to: $("#to").value, subject: $("#subject").value, body: $("#body").value }); loadEvents(data); setStatus("Email sent."); } catch (error) { setStatus("Email could not be sent."); showError(error.message); } });
 $("#stream-play").addEventListener("click", async () => { showError(); setStatus("Preparing adaptive streaming trace...", true); try { const data = await postJson("/api/stream", { quality: $("#quality").value }); loadEvents(data); setStatus("Streaming simulation ready."); } catch (error) { setStatus("Streaming simulation failed."); showError(error.message); } });

@@ -9,11 +9,14 @@
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="/">Protocol Dashboard <span>CN / V1</span></a>
-    <nav aria-label="Project links">
-      <a href="{{ github_url }}" target="_blank" rel="noreferrer">GitHub</a>
-      <a href="https://kinjalboro.me" target="_blank" rel="noreferrer">kinjalboro.me</a>
-    </nav>
+    <div class="header-left">
+      <a class="brand" href="/">Protocol Dashboard</a>
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light mode" title="Switch to light mode"></button>
+      <nav aria-label="Project links">
+        <a href="{{ github_url }}" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://kinjalboro.me" target="_blank" rel="noreferrer">kinjalboro.me</a>
+      </nav>
+    </div>
   </header>
 
   <main class="dashboard">
