@@ -81,26 +81,24 @@ http://127.0.0.1:5000
 
 Follow these steps to deploy the application as a systemd service on an Ubuntu VPS using Gunicorn.
 
-### 1. Install System Dependencies & FFmpeg
+### 1. Clone or Update the Repository
 
 ```bash
-sudo apt update
-sudo apt install -y python3 python3-venv python3-pip ffmpeg git
+git clone https://github.com/localrice/Protocol_visualizer.git /path/to/protocol-dashboard
+cd /path/to/protocol-dashboard
 ```
 
-### 2. Clone or Update the Repository
+*(If updating an existing deployment, pull the latest changes: `git pull origin main`)*
 
-```bash
-git clone https://github.com/localrice/Protocol_visualizer.git /var/www/protocol-dashboard
-cd /var/www/protocol-dashboard
-```
-
-*(If updating an existing deployment: `git pull origin main`)*
-
-### 3. Create and Activate Virtual Environment
+### 2. Create the Python Virtual Environment
 
 ```bash
 python3 -m venv venv
+```
+
+### 3. Activate the Virtual Environment
+
+```bash
 source venv/bin/activate
 ```
 
@@ -110,58 +108,112 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 5. Configure the Environment File (.env)
+### 5. Install FFmpeg with apt
+
+```bash
+sudo apt update
+sudo apt install -y ffmpeg
+```
+
+### 6. Create and Configure `.env`
+
+Copy the sample environment file:
 
 ```bash
 cp .env.example .env
 nano .env
 ```
-Configure your SMTP settings if using the Mail feature. Set restrictive file permissions:
+
+Configure your SMTP settings using standard `KEY=value` format. **Do NOT use `export`** in `.env`, as systemd's `EnvironmentFile` directive expects plain key-value entries. Set secure file permissions:
+
 ```bash
 chmod 600 .env
 ```
 
-### 6. Install and Configure the Systemd Service
+### 7. Copy the Systemd Service
 
-Copy the template service file:
 ```bash
 sudo cp deploy/protocol-dashboard.service /etc/systemd/system/protocol-dashboard.service
 ```
 
-Edit `/etc/systemd/system/protocol-dashboard.service` to match your deployment:
-- Replace `User=<user>` and `Group=<user>` with your Linux username (e.g., `ubuntu` or `www-data`).
-- Replace `/path/to/protocol-dashboard` with your actual repository path (e.g., `/var/www/protocol-dashboard`).
+Open `/etc/systemd/system/protocol-dashboard.service` and verify `WorkingDirectory` and `PATH` match your actual project path (e.g. `/home/deploy/protocol-dashboard`). The service is pre-configured for `User=deploy`.
 
-### 7. Enable and Start the Service
+### 8. Reload Systemd
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now protocol-dashboard
 ```
 
-### 8. Check Service Status
+### 9. Enable the Service
 
 ```bash
-sudo systemctl status protocol-dashboard
+sudo systemctl enable protocol-dashboard.service
 ```
 
-### 9. View Logs
+### 10. Start the Service
 
 ```bash
-sudo journalctl -u protocol-dashboard -f
+sudo systemctl start protocol-dashboard.service
 ```
 
-### 10. Restarting the Service After Updates
+### 11. Check Service Status
 
 ```bash
-cd /var/www/protocol-dashboard
+sudo systemctl status protocol-dashboard.service
+```
+
+### 12. Test Locally
+
+Verify that Gunicorn is serving requests locally:
+
+```bash
+curl http://127.0.0.1:5000
+```
+
+### 13. View Logs with journalctl
+
+Follow real-time service logs:
+
+```bash
+sudo journalctl -u protocol-dashboard.service -f
+```
+
+### 14. Restart the Service After Updates
+
+```bash
+cd /path/to/protocol-dashboard
 git pull origin main
 source venv/bin/activate
 pip install -r requirements.txt
-sudo systemctl restart protocol-dashboard
+sudo systemctl restart protocol-dashboard.service
 ```
 
 To stop the service at any time:
+
 ```bash
-sudo systemctl stop protocol-dashboard
+sudo systemctl stop protocol-dashboard.service
 ```
+
+---
+
+## Cloudflare Tunnel
+
+The application listens locally on `127.0.0.1:5000`. To route public traffic through an existing Cloudflare Tunnel (`protocol.kinjalboro.me → http://127.0.0.1:5000`):
+
+1. Route the DNS hostname through your tunnel:
+   ```bash
+   cloudflared tunnel route dns <tunnel-name-or-id> protocol.kinjalboro.me
+   ```
+
+2. Add the ingress rule to your Cloudflare Tunnel configuration (`/etc/cloudflared/config.yml`):
+   ```yaml
+   ingress:
+     - hostname: protocol.kinjalboro.me
+       service: http://127.0.0.1:5000
+     - service: http_status:404
+   ```
+
+3. Restart the Cloudflare Tunnel service:
+   ```bash
+   sudo systemctl restart cloudflared
+   ```

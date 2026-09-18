@@ -3,9 +3,7 @@ Description=Protocol Dashboard Gunicorn Application
 After=network.target
 
 [Service]
-# Run as a normal non-root user (e.g., ubuntu)
-User=<user>
-Group=<user>
+User=deploy
 
 # Directory where the repository is cloned on your server
 WorkingDirectory=/path/to/protocol-dashboard
