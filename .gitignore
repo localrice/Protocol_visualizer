@@ -1,6 +1,15 @@
+# Virtual environment
 venv/
+
+# Environment variables & secrets
+.env
+
+# Python bytecode & cache
 __pycache__/
 *.py[cod]
 .pytest_cache/
-.env
+
+# Generated runtime files & HLS stream segments
 instance/
+*.m3u8
+*.ts

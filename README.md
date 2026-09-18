@@ -77,41 +77,91 @@ Open your browser and navigate to:
 http://127.0.0.1:5000
 ```
 
-## Production Deployment (systemd on Ubuntu)
+## Production Deployment (Ubuntu VPS)
 
-The project includes a ready-to-use service file at `deploy/protocol-dashboard.service`.
+Follow these steps to deploy the application as a systemd service on an Ubuntu VPS using Gunicorn.
 
-1. **Create the virtual environment**:
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
+### 1. Install System Dependencies & FFmpeg
 
-2. **Install requirements**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip ffmpeg git
+```
 
-3. **Install and enable the systemd service**:
-   Copy the service file to systemd:
-   ```bash
-   sudo cp deploy/protocol-dashboard.service /etc/systemd/system/protocol-dashboard.service
-   ```
-   Open `/etc/systemd/system/protocol-dashboard.service` and replace the `<user>` and `/path/to/protocol-dashboard` placeholders with your Linux user and project directory path.
+### 2. Clone or Update the Repository
 
-   Then reload systemd and enable the service on boot:
-   ```bash
-   sudo systemctl daemon-reload
-   sudo systemctl enable --now protocol-dashboard
-   ```
+```bash
+git clone https://github.com/localrice/Protocol_visualizer.git /var/www/protocol-dashboard
+cd /var/www/protocol-dashboard
+```
 
-4. **Check service logs**:
-   ```bash
-   sudo journalctl -u protocol-dashboard -f
-   ```
+*(If updating an existing deployment: `git pull origin main`)*
 
-5. **Restart or stop the service**:
-   ```bash
-   sudo systemctl restart protocol-dashboard
-   sudo systemctl stop protocol-dashboard
-   ```
+### 3. Create and Activate Virtual Environment
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### 4. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 5. Configure the Environment File (.env)
+
+```bash
+cp .env.example .env
+nano .env
+```
+Configure your SMTP settings if using the Mail feature. Set restrictive file permissions:
+```bash
+chmod 600 .env
+```
+
+### 6. Install and Configure the Systemd Service
+
+Copy the template service file:
+```bash
+sudo cp deploy/protocol-dashboard.service /etc/systemd/system/protocol-dashboard.service
+```
+
+Edit `/etc/systemd/system/protocol-dashboard.service` to match your deployment:
+- Replace `User=<user>` and `Group=<user>` with your Linux username (e.g., `ubuntu` or `www-data`).
+- Replace `/path/to/protocol-dashboard` with your actual repository path (e.g., `/var/www/protocol-dashboard`).
+
+### 7. Enable and Start the Service
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now protocol-dashboard
+```
+
+### 8. Check Service Status
+
+```bash
+sudo systemctl status protocol-dashboard
+```
+
+### 9. View Logs
+
+```bash
+sudo journalctl -u protocol-dashboard -f
+```
+
+### 10. Restarting the Service After Updates
+
+```bash
+cd /var/www/protocol-dashboard
+git pull origin main
+source venv/bin/activate
+pip install -r requirements.txt
+sudo systemctl restart protocol-dashboard
+```
+
+To stop the service at any time:
+```bash
+sudo systemctl stop protocol-dashboard
+```
