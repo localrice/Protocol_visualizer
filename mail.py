@@ -5,8 +5,9 @@ from __future__ import annotations
 import os
 import smtplib
 import socket
-from datetime import datetime, timezone
 from email.message import EmailMessage
+
+from protocol import event
 
 SMTP_TIMEOUT = 15
 
@@ -18,16 +19,7 @@ class MailError(Exception):
 def _event(sequence: int, direction: str, event_type: str, message: str,
            fields: dict[str, str] | None = None, delay: int = 700,
            protocol: str = "SMTP") -> dict:
-    return {
-        "sequence": sequence,
-        "protocol": protocol,
-        "direction": direction,
-        "type": event_type,
-        "message": message,
-        "fields": fields or {},
-        "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
-        "delay": delay,
-    }
+    return event(sequence, protocol, direction, event_type, message, fields or {}, delay)
 
 
 def _response_text(reply: bytes | str) -> str:
