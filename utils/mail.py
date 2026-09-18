@@ -7,7 +7,7 @@ import smtplib
 import socket
 from email.message import EmailMessage
 
-from protocol import event
+from utils.protocol import event
 
 SMTP_TIMEOUT = 15
 

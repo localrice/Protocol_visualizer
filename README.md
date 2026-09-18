@@ -19,17 +19,19 @@ A small Flask dashboard for exploring application-layer exchanges through Browsi
 
 ## Architecture
 
-`app.py` owns Flask routes and application setup. `browsing.py` owns DNS/HTTP work, `mail.py` owns the configured SMTP connection, `streaming.py` converts the local MP4 to HLS and tracks served resources, and `protocol.py` provides the shared event helper. `templates/index.html` contains the two-panel shell. `static/js/app.js` renders the reusable event sequence and automatically advances the exchange. `static/css/style.css` contains the responsive, framework-free styling.
+`app.py` owns Flask routes and application setup. `utils/browsing.py` owns DNS/HTTP work, `utils/mail.py` owns the configured SMTP connection, `utils/streaming.py` converts the local MP4 to HLS and tracks served resources, and `utils/protocol.py` provides the shared event helper. `templates/index.html` contains the two-panel shell. `static/js/app.js` renders the reusable event sequence and automatically advances the exchange. `static/css/style.css` contains the responsive, framework-free styling.
 
 ## Project structure
 
 ```text
 .
 ├── app.py
-├── browsing.py
-├── mail.py
-├── protocol.py
-├── streaming.py
+├── utils/
+│   ├── __init__.py
+│   ├── browsing.py
+│   ├── mail.py
+│   ├── protocol.py
+│   └── streaming.py
 ├── media/video.mp4
 ├── requirements.txt
 ├── .env.example

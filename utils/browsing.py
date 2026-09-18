@@ -13,7 +13,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 import dns.exception
 import dns.resolver
 
-from protocol import event
+from utils.protocol import event
 
 USER_AGENT = "ProtocolDashboard/1.0"
 REQUEST_TIMEOUT = 8

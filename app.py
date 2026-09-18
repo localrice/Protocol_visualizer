@@ -4,15 +4,14 @@ from __future__ import annotations
 
 from flask import Flask, jsonify, render_template, request, send_file
 
-from browsing import browse
-from mail import MailError, send_mail
-from streaming import StreamingError, events_since, serve_file, start_stream
+from utils.browsing import browse
+from utils.mail import MailError, send_mail
+from utils.streaming import StreamingError, events_since, serve_file, start_stream
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
 
-# Replace this with the real repository URL when it is known.
-GITHUB_URL = "https://github.com/your-username/protocol-dashboard"
+GITHUB_URL = "https://github.com/localrice/Protocol_visualizer"
 
 
 def error_response(message: str, status: int = 400):

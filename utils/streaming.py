@@ -7,9 +7,9 @@ import threading
 from collections import deque
 from pathlib import Path
 
-from protocol import event
+from utils.protocol import event
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 SOURCE_VIDEO = BASE_DIR / "media" / "video.mp4"
 HLS_DIR = BASE_DIR / "instance" / "stream"
 HLS_PLAYLIST = HLS_DIR / "playlist.m3u8"
