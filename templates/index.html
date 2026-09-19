@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,11 +9,13 @@
   <script defer src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
   <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
 </head>
+
 <body>
   <header class="site-header">
     <div class="header-left">
       <a class="brand" href="/">Protocol Dashboard</a>
-      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light mode" title="Switch to light mode"></button>
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light mode"
+        title="Switch to light mode"></button>
       <nav aria-label="Project links">
         <a href="{{ github_url }}" target="_blank" rel="noreferrer">GitHub</a>
         <a href="https://kinjalboro.me" target="_blank" rel="noreferrer">kinjalboro.me</a>
@@ -22,13 +25,16 @@
 
   <main class="dashboard">
     <section class="panel activity-panel" aria-labelledby="activity-heading">
-        <div class="live-info">
-  <span class="live-info-dot"></span>
-  <div>
-    <strong><h1>Live network activity</h1></strong>
-        <p>This dashboard performs real network operations, including HTTPS requests, SMTP email, and streaming. Nothing is simulated.</p>
-  </div>
-</div>
+      <div class="live-info">
+        <span class="live-info-dot"></span>
+        <div>
+          <strong>
+            <h1>Live network activity</h1>
+          </strong>
+          <p>Browsing and Streaming perform real network operations. Mail uses a simulated SMTP exchange based on a real
+            SMTP session captured during development.</p>
+        </div>
+      </div>
       <div class="panel-heading">
         <!-- <h1 id="activity-heading">Activity</h1> -->
       </div>
@@ -42,7 +48,8 @@
       <div class="activity-view" data-view="browsing">
         <form id="browse-form">
           <label for="url">URL</label>
-          <div class="input-row"><input id="url" name="url" type="url" value="https://example.com" required><button class="primary" type="submit">Visit</button></div>
+          <div class="input-row"><input id="url" name="url" type="url" value="https://example.com" required><button
+              class="primary" type="submit">Visit</button></div>
           <!-- <p class="request-note">A live network request runs on the server. The trace shows request details, not raw packets.</p> -->
         </form>
       </div>
@@ -50,27 +57,45 @@
       <div class="activity-view is-hidden" data-view="mail">
         <form id="mail-form">
           <label for="to">To</label><input id="to" name="to" type="email" placeholder="recipient@example.com" required>
-          <label for="subject">Subject</label><input id="subject" name="subject" type="text" placeholder="A protocol message" required>
-          <label for="body">Body</label><textarea id="body" name="body" rows="5" placeholder="Write a message" required></textarea>
+          <label for="subject">Subject</label><input id="subject" name="subject" type="text"
+            placeholder="A protocol message" required>
+          <label for="body">Body</label><textarea id="body" name="body" rows="5" placeholder="Write a message"
+            required></textarea>
           <button class="primary" type="submit">Send</button>
+          <p class="request-note" style="line-height: 1.45; margin-top: 14px;">
+            <strong>SMTP simulation:</strong> In earlier versions of this project, email was sent using a real SMTP
+            connection. After deployment to <strong>DigitalOcean</strong>, outbound SMTP access on ports 25,
+            465, and 587 was blocked at the platform level. Because the production server could no longer establish an
+            SMTP connection, the Mail protocol visualization is now simulated using the real SMTP exchange captured
+            during development.
+          </p>
         </form>
       </div>
 
       <div class="activity-view is-hidden" data-view="streaming" style="padding-top: 20px;">
-        <div class="stream-controls"><button class="primary" id="stream-play" type="button">Play</button><button type="button" id="stream-pause">Pause</button></div>
-        <label for="quality">Quality</label><select id="quality"><option value="auto">Auto</option></select>
+        <div class="stream-controls"><button class="primary" id="stream-play" type="button">Play</button><button
+            type="button" id="stream-pause">Pause</button></div>
+        <label for="quality">Quality</label><select id="quality">
+          <option value="auto">Auto</option>
+        </select>
         <video id="stream-player" controls playsinline hidden></video>
       </div>
 
-      <div class="status-block" aria-live="polite"><span class="status-label">Status</span><span class="status-dot"></span><span id="status">Ready</span></div>
+      <div class="status-block" aria-live="polite"><span class="status-label">Status</span><span
+          class="status-dot"></span><span id="status">Ready</span></div>
       <div id="error" class="error" role="alert" hidden></div>
     </section>
 
     <section class="panel protocol-panel" aria-labelledby="protocol-heading">
-      <div class="panel-heading protocol-title"><h2 id="protocol-heading">Protocol exchange</h2></div>
-      <div id="exchange-view" class="exchange-view" aria-live="polite"><p class="empty-state">Run an activity to populate the exchange.</p></div>
+      <div class="panel-heading protocol-title">
+        <h2 id="protocol-heading">Protocol exchange</h2>
+      </div>
+      <div id="exchange-view" class="exchange-view" aria-live="polite">
+        <p class="empty-state">Run an activity to populate the exchange.</p>
+      </div>
       <!-- <p class="trace-note">Live request metadata; no packet capture.</p> -->
     </section>
   </main>
 </body>
+
 </html>
