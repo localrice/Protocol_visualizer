@@ -1,0 +1,41 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update repo and restart service on VPS
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_IP }}
+          username: deploy
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            # Navigate to project directory (matches service configuration)
+            if [ -d "/home/deploy/protocol-dashboard" ]; then
+              cd /home/deploy/protocol-dashboard
+            elif [ -d "/home/deploy/Protocol_visualizer" ]; then
+              cd /home/deploy/Protocol_visualizer
+            else
+              echo "Project directory not found in /home/deploy!"
+              exit 1
+            fi
+
+            # Pull latest changes
+            git pull origin main
+
+            # Install/update python dependencies
+            source venv/bin/activate
+            pip install -r requirements.txt
+
+            # Restart Gunicorn service
+            sudo systemctl restart protocol-dashboard.service
