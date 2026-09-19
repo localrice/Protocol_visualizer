@@ -1,6 +1,13 @@
 # Protocol Visualizer
 
-A small web application that performs real network activities—such as web requests, SMTP email, and streaming—while visualizing the protocol exchanges step-by-step in the browser.
+A web application that demonstrates network protocols in action—performing live DNS resolution and HTTP/HTTPS browsing, real-time HLS video streaming, and a simulated SMTP email protocol exchange based on an actual session captured during development.
+
+## Activities Overview
+
+- **Browsing (Live)**: Performs real DNS resolution (via `dnspython`) and real HTTP/HTTPS requests on the server, generating a live protocol trace of DNS query/response, TCP connection, TLS negotiation, and HTTP headers.
+- **Streaming (Live)**: Performs real HLS video streaming from the Flask server using FFmpeg, capturing live playlist (`.m3u8`) and segment (`.ts`) HTTP requests.
+- **Mail (SMTP Simulation)**: Visualizes a step-by-step SMTP exchange (TCP connect, greeting, EHLO, STARTTLS, AUTH PLAIN, MAIL FROM, RCPT TO, DATA, QUIT) based on an actual successful SMTP session captured during development.
+  > *Note on Mail:* Outbound SMTP access on ports 25, 465, and 587 is blocked at the platform level on DigitalOcean VPS instances. To maintain the educational demonstration without connection failures or exposing credentials, the Mail visualizer replays a realistic protocol exchange captured during development.
 
 ## Requirements
 
@@ -36,26 +43,17 @@ sudo apt install -y python3 python3-venv python3-pip ffmpeg git
    pip install -r requirements.txt
    ```
 
-4. **Configure environment variables (optional, for Mail)**:
-   Copy the example environment file:
+4. **Environment variables (optional)**:
+   The application works out of the box without any external credentials or configuration.
+   If desired, you can customize the sender identity displayed in the simulated Mail exchange by copying `.env.example`:
    ```bash
    cp .env.example .env
    ```
-   Fill in your SMTP settings in `.env`:
+   Optionally set:
    ```env
-   SMTP_HOST=smtp.example.com
-   SMTP_PORT=587
-   SMTP_USERNAME=your-email@example.com
-   SMTP_PASSWORD=your-password-or-app-password
-   SMTP_FROM=your-email@example.com
+   SMTP_FROM=Kinjal's Protocol Visualizer
+   SMTP_USERNAME=visualizer@kinjalboro.me
    ```
-   Export the variables into your session:
-   ```bash
-   set -a
-   source .env
-   set +a
-   ```
-   *(Browsing and Streaming work out of the box without SMTP credentials.)*
 
 ## Running
 
@@ -115,16 +113,16 @@ sudo apt update
 sudo apt install -y ffmpeg
 ```
 
-### 6. Create and Configure `.env`
+### 6. Create and Configure `.env` (Optional)
 
-Copy the sample environment file:
+All activities—Browsing, Streaming, and the simulated Mail exchange—run out of the box without requiring `.env`. If you wish to customize display variables (such as sender name/email):
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-Configure your SMTP settings using standard `KEY=value` format. **Do NOT use `export`** in `.env`, as systemd's `EnvironmentFile` directive expects plain key-value entries. Set secure file permissions:
+Use standard `KEY=value` format. **Do NOT use `export`** in `.env`, as systemd's `EnvironmentFile` directive expects plain key-value entries. Set secure file permissions:
 
 ```bash
 chmod 600 .env
